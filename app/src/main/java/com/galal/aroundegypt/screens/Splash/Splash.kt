@@ -73,7 +73,6 @@ fun SplashScreen(navHostController: NavHostController){
                 text = stringResource(R.string.around_egypt),
                 fontSize = 22.sp,
                 color = Color.Black,
-                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.Center)
             )
