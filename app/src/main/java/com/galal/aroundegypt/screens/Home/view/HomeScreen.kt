@@ -88,7 +88,7 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) 
                         ExperienceDetailsBottomSheetMost(experience = selectedMostRecentExperience!!)
                     }
                     else -> {
-                        Box(modifier = Modifier.height(1.dp)) // Placeholder to prevent crash
+                        Box(modifier = Modifier.height(1.dp))
                     }
                 }
             }
