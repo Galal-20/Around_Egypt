@@ -21,22 +21,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Divider
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.ModalBottomSheetLayout
+import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -47,29 +58,69 @@ import com.galal.aroundegypt.model.Recommanded.Data
 import com.galal.aroundegypt.screens.Home.viewModel.HomeViewModel
 import com.galal.aroundegypt.utils.NoInternetConnection
 import com.galal.aroundegypt.utils.networkListener
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.PaddingValues as PaddingValues1
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) {
-
     val isNetworkAvailable = networkListener()
-    if (!isNetworkAvailable.value){
+    val bottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
+    val coroutineScope = rememberCoroutineScope()
+    var selectedRecommendedExperience by remember { mutableStateOf<Data?>(null) }
+    var selectedMostRecentExperience by remember { mutableStateOf<com.galal.aroundegypt.model.Most.Data?>(null) }
+
+
+
+
+
+    if (!isNetworkAvailable.value) {
         NoInternetConnection()
-    }else{
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = Color.White)
+    } else {
+        ModalBottomSheetLayout(
+            sheetState = bottomSheetState,
+            sheetContent = {
+                when {
+                    selectedRecommendedExperience != null -> {
+                        ExperienceDetailsBottomSheet(experience = selectedRecommendedExperience!!)
+                    }
+                    selectedMostRecentExperience != null -> {
+                        ExperienceDetailsBottomSheetMost(experience = selectedMostRecentExperience!!)
+                    }
+                    else -> {
+                        Box(modifier = Modifier.height(1.dp)) // Placeholder to prevent crash
+                    }
+                }
+            }
+            ,
+            sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         ) {
-            TopBar()
-            WelcomeSection()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = Color.White)
+            ) {
+                TopBar()
+                WelcomeSection()
 
-            SectionTitle(title = "Recommended Experiences")
-            HorizontalCardList(viewModel = viewModel, navHostController)
+                SectionTitle(title = "Recommended Experiences")
+                HorizontalCardList(viewModel = viewModel) { experience ->
+                    selectedRecommendedExperience = experience
+                    selectedMostRecentExperience = null
+                    coroutineScope.launch {
+                        bottomSheetState.show()
+                    }
+                }
 
-            SectionTitle("Most Recent")
-            MostRecentList(viewModel,navHostController)
-
+                SectionTitle("Most Recent")
+                MostRecentList(viewModel){ experience ->
+                    selectedMostRecentExperience = experience
+                    selectedRecommendedExperience = null
+                    coroutineScope.launch {
+                        bottomSheetState.show()
+                    }
+                }
+            }
         }
     }
 }
@@ -167,8 +218,10 @@ fun SectionTitle(title: String) {
     )
 }
 
+
+// Recommended Experiences
 @Composable
-fun HorizontalCardList(viewModel: HomeViewModel, navHostController: NavHostController) {
+fun HorizontalCardList(viewModel: HomeViewModel, onItemClick: (Data) -> Unit) {
     val experiencesState by viewModel.experiences.collectAsState()
 
     when (experiencesState) {
@@ -181,8 +234,8 @@ fun HorizontalCardList(viewModel: HomeViewModel, navHostController: NavHostContr
                 contentPadding = PaddingValues1(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(experiences) { experience ->
-                    RecommendedExperiencesCard(experiences = experience, navHostController)
+                items(experiences, key = { it.id }) { experience ->
+                    RecommendedExperiencesCard(experiences = experience, onClick = onItemClick)
                 }
             }
         }
@@ -193,40 +246,10 @@ fun HorizontalCardList(viewModel: HomeViewModel, navHostController: NavHostContr
 }
 
 @Composable
-fun MostRecentList(viewModel: HomeViewModel, navHostController: NavHostController) {
-    val mostRecentState by viewModel.mostRecentExperiences.collectAsState()
-
-    when(mostRecentState){
-        is ApiState.Loading -> {
-            CircularProgressIndicator()
-        }
-        is ApiState.Success -> {
-            val mostRecent = (mostRecentState as ApiState.Success<com.galal.aroundegypt.model.Most.MostRecentExperiences>).data.data
-            LazyColumn(
-                contentPadding = PaddingValues1(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(mostRecent) { mostRecent ->
-                    MostRecentCard(mostRecent, navHostController)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-        }
-        is ApiState.Failure -> {
-            Text(text = "Error: ${(mostRecentState as ApiState.Failure).message}")
-        }
-    }
-
-}
-
-@Composable
-fun RecommendedExperiencesCard(experiences: Data, navHostController: NavHostController) {
+fun RecommendedExperiencesCard(experiences: Data, onClick: (Data) -> Unit) {
 
     Column(
-        modifier = Modifier.clickable {
-            // Navigate to ExperienceScreen with the ID of the selected experience
-            navHostController.navigate("experience_screen/${experiences.id}")
-        }
+        modifier = Modifier.clickable { onClick(experiences) }
     ) {
         Card(
             modifier = Modifier
@@ -342,7 +365,7 @@ fun RecommendedExperiencesCard(experiences: Data, navHostController: NavHostCont
                         fontSize = 14.sp)
 
                     Spacer(modifier = Modifier.width(10.dp))
-                    Image(painter = painterResource(id = R.drawable.like),
+                    Image(painter = painterResource(id = R.drawable.outline_like),
                         contentDescription = "like Icon",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.size(20.dp))
@@ -353,18 +376,128 @@ fun RecommendedExperiencesCard(experiences: Data, navHostController: NavHostCont
 }
 
 @Composable
-fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, navHostController: NavHostController){
+fun ExperienceDetailsBottomSheet(experience: Data) {
     Column(
-        modifier = Modifier.clickable {
-            navHostController.navigate("experience_screen/${mostExperience.id}")
-        }
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(0.dp)
     ) {
+        Image(
+            painter = rememberAsyncImagePainter(model = experience.cover_photo ?: R.drawable.placeholder),
+            contentDescription = "Cover Photo",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(285.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        //title, likes, views
+            Row (
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 18.dp),
+            ){
+                Column {
+                    Text(
+                        text = experience.title ?: "Unknown City",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+                Column {
+                    Row {
+                        Image(
+                            painter = painterResource(id = R.drawable.share),
+                            contentDescription = "Share",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(15.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.outline_like),
+                            contentDescription = "Share",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(15.dp))
+                        Text(
+                            text = "${experience.likes_no ?: 0}",
+                            fontSize = 14.sp,
+                            color = Color.Black
+                        )
+                    }
+
+                }
+            }
+            //City
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp),) {
+                Text(
+                    text = "${experience.city.name ?: 0}, Egypt.",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+        Spacer(modifier = Modifier.height(16.dp))
+        Divider(
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+
+        SectionTitle(title = "Description")
+
+        Text(
+            text = "${experience.description}",
+            fontSize = 14.sp,
+            color = Color.Black,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp)
+        )
+        Spacer(modifier = Modifier.height(30.dp))
+
+    }
+}
+
+//___________________________________________________________________________________________________
+// Most Recent Experiences
+@Composable
+fun MostRecentList(viewModel: HomeViewModel, onItemClick: (com.galal.aroundegypt.model.Most.Data) -> Unit) {
+    val mostRecentState by viewModel.mostRecentExperiences.collectAsState()
+
+    when(mostRecentState){
+        is ApiState.Loading -> {
+            CircularProgressIndicator()
+        }
+        is ApiState.Success -> {
+            val mostRecent = (mostRecentState as ApiState.Success<com.galal.aroundegypt.model.Most.MostRecentExperiences>).data.data
+            LazyColumn(
+                contentPadding = PaddingValues1(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(mostRecent, key = { it.id }) { mostRecent ->
+                    MostRecentCard(mostRecent, onItemClick = onItemClick)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+        is ApiState.Failure -> {
+            Text(text = "Error: ${(mostRecentState as ApiState.Failure).message}")
+        }
+    }
+}
+
+@Composable
+fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, onItemClick: (com.galal.aroundegypt.model.Most.Data) -> Unit ){
+    Column{
         Card(
             modifier = Modifier
                 .width(370.dp)
-                .height(200.dp),
+                .height(200.dp)
+                .clickable { onItemClick(mostExperience) },
             shape = RoundedCornerShape(16.dp),
             elevation = 4.dp
+
         ) {
             Image(
                 painter = rememberAsyncImagePainter(
@@ -382,13 +515,13 @@ fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, navHos
                     .padding(10.dp)
             ) {
 
-                // 360 Icon
+
                 Image(painter = painterResource(id = R.drawable.earth),
                     contentDescription = "360 degree",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.size(50.dp).align(Alignment.Center))
 
-                // Info Icon (Top-Right)
+
                 Image(painter = painterResource(id = R.drawable.info),
                     contentDescription = "Info Icon",
                     contentScale = ContentScale.Fit,
@@ -398,9 +531,7 @@ fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, navHos
                     contentDescription = "Info Icon",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.size(40.dp).align(Alignment.BottomEnd).padding(8.dp))
-                // Gallery Icon (Bottom-Right)
 
-                // Views Count (Bottom-Left)
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -425,21 +556,31 @@ fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, navHos
         //NameMostRecent
         Row (
             horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.width(370.dp)
-                .padding(horizontal = 14.dp, vertical = 15.dp),
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically
         ){
-            Column{
+            Column(
+                modifier = Modifier.weight(1f)
+            ){
                 Text(text = "${mostExperience.title}",
                     color = Color.Black,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 14.sp,
+                    maxLines = 2,
+                    fontWeight = FontWeight.Bold,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Column{
-                Row {
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ){
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text("${mostExperience.likes_no ?: 0}")
                     Spacer(modifier = Modifier.width(5.dp))
-                    Image(painter = painterResource(id = R.drawable.like),
+                    Image(painter = painterResource(id = R.drawable.outline_like),
                         contentDescription = "like Icon",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.size(20.dp))
@@ -450,6 +591,90 @@ fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, navHos
 
 }
 
+
+@Composable
+fun ExperienceDetailsBottomSheetMost(experience: com.galal.aroundegypt.model.Most.Data) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(0.dp)
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(model = experience.cover_photo ?: R.drawable.placeholder),
+            contentDescription = "Cover Photo",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(285.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        //title, likes, views
+        Row (
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 18.dp),
+        ){
+            Column {
+                Text(
+                    text = experience.title ?: "Unknown City",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
+            Column {
+                Row {
+                    Image(
+                        painter = painterResource(id = R.drawable.share),
+                        contentDescription = "Share",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(modifier = Modifier.width(15.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.outline_like),
+                        contentDescription = "Share",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(modifier = Modifier.width(15.dp))
+                    Text(
+                        text = "${experience.likes_no ?: 0}",
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+                }
+
+            }
+        }
+        //City
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp),) {
+            Text(
+                text = "${experience.city.name ?: 0}, Egypt.",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Divider(
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+
+        SectionTitle(title = "Description")
+
+        Text(
+            text = "${experience.description}",
+            fontSize = 14.sp,
+            color = Color.Black,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp)
+        )
+        Spacer(modifier = Modifier.height(30.dp))
+
+    }
+}
 
 
 

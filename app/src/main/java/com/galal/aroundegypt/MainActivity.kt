@@ -34,13 +34,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val viewModel: HomeViewModel by viewModels { HomeViewModelFactory(HomeRepositoryImpl(
-            ApiClient.aroundApi)) }
-
-        val viewModelEx: ExperienceScreenViewModel by viewModels { ExperienceScreenViewModelFactory(HomeRepositoryImpl(
-            ApiClient.aroundApi)) }
-
-
+        val viewModel: HomeViewModel by viewModels {
+            HomeViewModelFactory(HomeRepositoryImpl(ApiClient.aroundApi))
+        }
         setContent {
             AroundEgyptTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -53,19 +49,9 @@ class MainActivity : ComponentActivity() {
                             composable("splash_screen") {
                                 SplashScreen(navController)
                             }
-
                             composable("home_screen") {
                                 HomeScreen(navHostController = navController, viewModel = viewModel)
                             }
-
-                            composable("experience_screen/{id}") { backStackEntry ->
-                                val experienceId = backStackEntry.arguments?.getString("id")
-                                if (experienceId != null) {
-                                    ExperienceScreen(navHostController = navController, viewModel
-                                    = viewModelEx, experienceId = experienceId)
-                                }
-                            }
-
                         }
                     }
                 }
