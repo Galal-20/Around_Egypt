@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Surface
@@ -12,11 +13,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.galal.aroundegypt.data.api.ApiClient
+import com.galal.aroundegypt.data.repository.HomeRepositoryImpl
+import com.galal.aroundegypt.model.Recommanded.Data
+import com.galal.aroundegypt.screens.Details.view.ExperienceScreen
+import com.galal.aroundegypt.screens.Details.viewModel.ExperienceScreenViewModel
+import com.galal.aroundegypt.screens.Details.viewModel.ExperienceScreenViewModelFactory
 import com.galal.aroundegypt.screens.Home.view.HomeScreen
+import com.galal.aroundegypt.screens.Home.viewModel.HomeViewModel
+import com.galal.aroundegypt.screens.Home.viewModel.HomeViewModelFactory
 import com.galal.aroundegypt.screens.Splash.SplashScreen
 import com.galal.aroundegypt.ui.theme.AroundEgyptTheme
 
@@ -24,6 +34,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val viewModel: HomeViewModel by viewModels {
+            HomeViewModelFactory(HomeRepositoryImpl(ApiClient.aroundApi))
+        }
         setContent {
             AroundEgyptTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -37,9 +50,8 @@ class MainActivity : ComponentActivity() {
                                 SplashScreen(navController)
                             }
                             composable("home_screen") {
-                                HomeScreen(navHostController = navController)
+                                HomeScreen(navHostController = navController, viewModel = viewModel)
                             }
-
                         }
                     }
                 }

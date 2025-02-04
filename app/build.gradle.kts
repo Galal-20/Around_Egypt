@@ -89,7 +89,7 @@ dependencies {
 
 
     //coil for images
-    implementation("io.coil-kt:coil-compose:2.0.0")
+    implementation("io.coil-kt:coil-compose:2.4.0")
     //Animation
     implementation("com.airbnb.android:lottie-compose:6.0.0")
     implementation("com.github.stevdza-san:OneTapCompose:1.0.14")

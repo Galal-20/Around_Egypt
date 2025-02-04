@@ -1,0 +1,33 @@
+package com.galal.aroundegypt.model.Recommanded
+
+data class Data(
+    val address: String,
+    val audio_url: String,
+    val city: com.galal.aroundegypt.model.Recommanded.City,
+    val cover_photo: String,
+    val description: String,
+    val detailed_description: String,
+    val era: com.galal.aroundegypt.model.Recommanded.Era,
+    val experience_tips: List<Any>,
+    val famous_figure: String,
+    val founded: String,
+    val gmap_location: com.galal.aroundegypt.model.Recommanded.GmapLocation,
+    val has_audio: Boolean,
+    val has_video: Int,
+    val id: String,
+    val is_liked: Any,
+    val likes_no: Int,
+    val opening_hours: com.galal.aroundegypt.model.Recommanded.OpeningHours,
+    val period: com.galal.aroundegypt.model.Recommanded.Period,
+    val rating: Int,
+    val recommended: Int,
+    val reviews: List<com.galal.aroundegypt.model.Recommanded.Review>,
+    val reviews_no: Int,
+    val starting_price: Int,
+    val tags: List<com.galal.aroundegypt.model.Recommanded.Tag>,
+    val ticket_prices: List<com.galal.aroundegypt.model.Recommanded.TicketPrice>,
+    val title: String,
+    val tour_html: String,
+    val translated_opening_hours: com.galal.aroundegypt.model.Recommanded.TranslatedOpeningHours,
+    val views_no: Int
+)
