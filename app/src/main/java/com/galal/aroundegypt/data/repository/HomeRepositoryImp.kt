@@ -49,8 +49,6 @@ class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
             }
         }
 
-
-
     suspend fun likeExperience(id: String): ApiState<Unit> = withContext(Dispatchers.IO) {
         return@withContext try {
             Log.d("LIKE_REQUEST", "Liking experience with ID: $id")
@@ -73,5 +71,16 @@ class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
             ApiState.Failure(e.localizedMessage ?: "Unknown Error")
         }
     }
+
+
+    suspend fun searchExperiences(title: String): ApiState<MostRecentExperiences> =
+        withContext(Dispatchers.IO) {
+            return@withContext try {
+                val response = apiService.searchExperiences(title)
+                ApiState.Success(response)
+            } catch (e: Exception) {
+                ApiState.Failure(e.localizedMessage ?: "Unknown Error")
+            }
+        }
 }
 

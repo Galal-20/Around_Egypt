@@ -131,3 +131,21 @@ fun SectionTitle(title: String) {
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )
 }
+
+
+@Composable
+fun WelcomeSection() {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+        Text(
+            text = stringResource(R.string.welcome),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+        Text(
+            text = stringResource(R.string.welcome_description),
+            fontSize = 14.sp,
+            color = Color.Black
+        )
+    }
+}

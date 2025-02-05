@@ -28,6 +28,11 @@ interface AroundApi {
 
     @POST("experiences/{id}/like")
     suspend fun likeExperience(@Path("id") id: String): retrofit2.Response<Unit>
+
+    @GET("experiences")
+    suspend fun searchExperiences(
+        @Query("filter[title]") title: String
+    ): MostRecentExperiences
 }
 
 

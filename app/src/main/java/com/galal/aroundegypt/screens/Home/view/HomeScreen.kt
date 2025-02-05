@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.galal.aroundegypt.screens.Home.view
 
 import android.util.Log
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,11 +30,20 @@ import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
+import androidx.compose.material.TextField
+import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,11 +56,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,27 +72,51 @@ import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.galal.aroundegypt.R
 import com.galal.aroundegypt.data.api.ApiState
+import com.galal.aroundegypt.model.Most.MostRecentExperiences
 import com.galal.aroundegypt.model.Recommanded.Data
 import com.galal.aroundegypt.screens.Home.viewModel.HomeViewModel
+import com.galal.aroundegypt.utils.LoadingIndicator
 import com.galal.aroundegypt.utils.NoInternetConnection
 import com.galal.aroundegypt.utils.SectionTitle
+import com.galal.aroundegypt.utils.WelcomeSection
 import com.galal.aroundegypt.utils.networkListener
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.PaddingValues as PaddingValues1
 
+
+
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) {
+fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel) {
     val isNetworkAvailable = networkListener()
     val bottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     val coroutineScope = rememberCoroutineScope()
     var selectedRecommendedExperience by remember { mutableStateOf<Data?>(null) }
     var selectedMostRecentExperience by remember { mutableStateOf<com.galal.aroundegypt.model.Most.Data?>(null) }
 
+    val searchResults by viewModel.searchResults.collectAsState()
+    var isSearching by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf(TextFieldValue("")) }
+
     LaunchedEffect(isNetworkAvailable.value) {
         viewModel.fetchExperiences()
         viewModel.fetchMostRecentExperiences()
+    }
+
+    LaunchedEffect(searchText) {
+        if (searchText.text.isNotEmpty()) {
+            viewModel.searchExperiences(searchText.text)
+        }
+    }
+
+    LaunchedEffect(bottomSheetState.isVisible) {
+        if (!bottomSheetState.isVisible) {
+            selectedRecommendedExperience = null
+            selectedMostRecentExperience = null
+        }
     }
 
     if (!isNetworkAvailable.value) {
@@ -96,8 +136,7 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) 
                         Box(modifier = Modifier.height(1.dp))
                     }
                 }
-            }
-            ,
+            },
             sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         ) {
             Column(
@@ -105,40 +144,76 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) 
                     .fillMaxSize()
                     .background(color = Color.White)
             ) {
-                TopBar()
-                WelcomeSection()
+                TopBar(
+                    viewModel,
+                    isSearching = isSearching,
+                    searchText = searchText,
+                    onSearchChanged = { isSearching = it },
+                    onSearchTextChanged = { searchText = it }
+                )
 
-                SectionTitle(title = "Recommended Experiences")
-                HorizontalCardList(viewModel = viewModel) { experience ->
-                    selectedRecommendedExperience = experience
-                    selectedMostRecentExperience = null
-                    coroutineScope.launch {
-                        bottomSheetState.show()
+                if (isSearching) {
+                    if (searchResults is ApiState.Success) {
+                        val successResult = searchResults as ApiState.Success
+                        val experiences = successResult.data.data
+                        if (experiences.isNotEmpty()) {
+                            SectionTitle("Search Results")
+                            LazyColumn(
+                                contentPadding = PaddingValues1(horizontal = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(experiences) { experience ->
+                                   MostRecentCard(experience,viewModel) {
+                                       selectedMostRecentExperience= it
+                                       coroutineScope.launch {
+                                           bottomSheetState.show()
+                                       }
+                                   }
+                                }
+                            }
+                        } else {
+                            Text("No results found", modifier = Modifier.padding(16.dp))
+                        }
+                    } else if (searchResults is ApiState.Loading) {
+                        LoadingIndicator()
+                    } else if (searchResults is ApiState.Failure) {
+                        Text("Error occurred while searching", modifier = Modifier.padding(16.dp))
                     }
-                }
-
-                SectionTitle("Most Recent")
-                MostRecentList(viewModel){ experience ->
-                    selectedMostRecentExperience = experience
-                    selectedRecommendedExperience = null
-                    coroutineScope.launch {
-                        bottomSheetState.show()
+                } else {
+                    WelcomeSection()
+                    SectionTitle(title = "Recommended Experiences")
+                    HorizontalCardList(viewModel = viewModel) { experience ->
+                        selectedRecommendedExperience = experience
+                        coroutineScope.launch { bottomSheetState.show() }
+                    }
+                    SectionTitle("Most Recent")
+                    MostRecentList(viewModel) { experience ->
+                        selectedMostRecentExperience = experience
+                        coroutineScope.launch { bottomSheetState.show() }
                     }
                 }
             }
         }
     }
 }
-
 @Composable
-fun TopBar() {
+fun TopBar(
+    viewModel: HomeViewModel,
+           isSearching: Boolean,
+           searchText: TextFieldValue,
+           onSearchChanged: (Boolean) -> Unit,
+           onSearchTextChanged: (TextFieldValue) -> Unit
+) {
+    //var searchText  by remember { mutableStateOf(TextFieldValue("")) }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = Icons.Default.Menu,
             contentDescription = "Menu",
@@ -148,39 +223,93 @@ fun TopBar() {
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Search Bar
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp)
-                .background(
-                    color = Color.LightGray.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(8.dp)
-                ),
-            contentAlignment = Alignment.CenterStart
-        ) {
-
-            Row(
+        if (!isSearching) {
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .weight(1f)
+                    .height(48.dp)
+                    .background(
+                        color = Color.LightGray.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable {
+                        onSearchChanged(true)
+                    },
+                contentAlignment = Alignment.CenterStart
             ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search Icon",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
 
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search Icon",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
-                )
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Try \"Luxor\"",
-                    style = MaterialTheme.typography.body1.copy(color = Color.Gray)
-                )
+                    Text(
+                        text = "Try \"Luxor\"",
+                        style = MaterialTheme.typography.body1.copy(color = Color.Gray)
+                    )
+                }
             }
+        } else {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { value ->
+                    onSearchTextChanged(value)
+                    if (searchText.text.isNotEmpty()) {
+                        CoroutineScope(Dispatchers.IO).launch{
+                            viewModel.searchExperiences(value.text)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                label = { Text("Try \"Luxor\"",color = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search Icon",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                trailingIcon = {
+                    if (searchText.text.isNotEmpty()) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear",
+                            tint = Color.Gray,
+                            modifier = Modifier.clickable {
+                                onSearchTextChanged(TextFieldValue(""))
+                            }
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Search",
+                            tint = Color.Gray,
+                            modifier = Modifier.clickable {
+                                onSearchChanged(false)
+                                keyboardController?.hide()
+                            }
+                        )
+                    }
+                },
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = Color.Black,
+                    unfocusedBorderColor = Color.Black,
+                    textColor = Color.Black,
+                    cursorColor = Color.Black
+                )
+            )
         }
 
         Spacer(modifier = Modifier.width(8.dp))
@@ -193,25 +322,8 @@ fun TopBar() {
             modifier = Modifier.size(24.dp)
         )
     }
-}
 
-@Composable
-fun WelcomeSection() {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-        Text(
-            text = stringResource(R.string.welcome),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-        Text(
-            text = stringResource(R.string.welcome_description),
-            fontSize = 14.sp,
-            color = Color.Black
-        )
-    }
 }
-
 
 
 // Recommended Experiences
