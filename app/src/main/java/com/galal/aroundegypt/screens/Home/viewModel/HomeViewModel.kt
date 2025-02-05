@@ -6,9 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.galal.aroundegypt.data.api.ApiState
 import com.galal.aroundegypt.data.repository.HomeRepositoryImpl
 import com.galal.aroundegypt.model.Most.MostRecentExperiences
-import com.galal.aroundegypt.model.Recommanded.Data
 import com.galal.aroundegypt.model.Recommanded.RecommendedExperiences
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -20,6 +18,9 @@ class HomeViewModel(private val repository: HomeRepositoryImpl): ViewModel() {
     val experiences: StateFlow<ApiState<RecommendedExperiences>> = _experiences
     private val _mostRecentExperiences = MutableStateFlow<ApiState<MostRecentExperiences>>(ApiState.Loading)
     val mostRecentExperiences: StateFlow<ApiState<MostRecentExperiences>> = _mostRecentExperiences
+
+    private val _searchResults = MutableStateFlow<ApiState<MostRecentExperiences>>(ApiState.Loading)
+    val searchResults: StateFlow<ApiState<MostRecentExperiences>> = _searchResults
 
     val likedExperiences = mutableSetOf<String>()
     val likedExperiencesMost = mutableSetOf<String>()
@@ -115,4 +116,16 @@ class HomeViewModel(private val repository: HomeRepositoryImpl): ViewModel() {
             }
         }
     }
+
+
+    fun searchExperiences(title: String) {
+        viewModelScope.launch {
+            _searchResults.value = ApiState.Loading
+            val response = repository.searchExperiences(title)
+            _searchResults.value = response
+        }
+    }
+
+
+
 }
