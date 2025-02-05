@@ -36,12 +36,10 @@ class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
         withContext(Dispatchers.IO) {
             return@withContext try {
                 val response = apiService.getExperienceDetailsForRecommended(id)
-
-                // Log response for debugging
                 Log.d("API_RESPONSE", "Received: $response")
 
                 if (response != null) {
-                    ApiState.Success(response) // Return object directly
+                    ApiState.Success(response) // return object
                 } else {
                     ApiState.Failure("Experience not found")
                 }
@@ -51,4 +49,29 @@ class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
             }
         }
 
+
+
+    suspend fun likeExperience(id: String): ApiState<Unit> = withContext(Dispatchers.IO) {
+        return@withContext try {
+            Log.d("LIKE_REQUEST", "Liking experience with ID: $id")
+            val response = apiService.likeExperience(id)
+            Log.d("API_RESPONSE", "Like Response Code: ${response.code()}")
+
+            val updatedDetails = apiService.getExperienceDetailsForRecommended(id)
+            Log.d("API_RESPONSE", "Updated Experience Details: $updatedDetails")
+
+            if (response.isSuccessful) {
+                Log.d("API_SUCCESS", "Experience Liked Successfully")
+                ApiState.Success(Unit)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("API_ERROR", "Failed to Like Experience: $errorMessage")
+                ApiState.Failure("Error: ${response.message()}")
+            }
+        } catch (e: Exception) {
+            Log.e("API_ERROR", "Exception: ${e.localizedMessage}")
+            ApiState.Failure(e.localizedMessage ?: "Unknown Error")
+        }
+    }
 }
+
