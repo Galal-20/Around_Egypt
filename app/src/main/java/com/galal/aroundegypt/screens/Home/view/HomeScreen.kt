@@ -33,8 +33,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,7 +59,9 @@ import com.galal.aroundegypt.data.api.ApiState
 import com.galal.aroundegypt.model.Recommanded.Data
 import com.galal.aroundegypt.screens.Home.viewModel.HomeViewModel
 import com.galal.aroundegypt.utils.NoInternetConnection
+import com.galal.aroundegypt.utils.SectionTitle
 import com.galal.aroundegypt.utils.networkListener
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.PaddingValues as PaddingValues1
 
@@ -70,9 +74,10 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) 
     var selectedRecommendedExperience by remember { mutableStateOf<Data?>(null) }
     var selectedMostRecentExperience by remember { mutableStateOf<com.galal.aroundegypt.model.Most.Data?>(null) }
 
-
-
-
+    LaunchedEffect(isNetworkAvailable.value) {
+        viewModel.fetchExperiences()
+        viewModel.fetchMostRecentExperiences()
+    }
 
     if (!isNetworkAvailable.value) {
         NoInternetConnection()
@@ -82,7 +87,7 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel,) 
             sheetContent = {
                 when {
                     selectedRecommendedExperience != null -> {
-                        ExperienceDetailsBottomSheet(experience = selectedRecommendedExperience!!)
+                        ExperienceDetailsBottomSheet(experience = selectedRecommendedExperience!!, viewModel)
                     }
                     selectedMostRecentExperience != null -> {
                         ExperienceDetailsBottomSheetMost(experience = selectedMostRecentExperience!!)
@@ -207,16 +212,6 @@ fun WelcomeSection() {
     }
 }
 
-@Composable
-fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        fontSize = 22.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.Black,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-}
 
 
 // Recommended Experiences
@@ -235,7 +230,7 @@ fun HorizontalCardList(viewModel: HomeViewModel, onItemClick: (Data) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(experiences, key = { it.id }) { experience ->
-                    RecommendedExperiencesCard(experiences = experience, onClick = onItemClick)
+                    RecommendedExperiencesCard(experiences = experience,viewModel, onClick = onItemClick)
                 }
             }
         }
@@ -246,7 +241,11 @@ fun HorizontalCardList(viewModel: HomeViewModel, onItemClick: (Data) -> Unit) {
 }
 
 @Composable
-fun RecommendedExperiencesCard(experiences: Data, onClick: (Data) -> Unit) {
+fun RecommendedExperiencesCard(experiences: Data, viewModel: HomeViewModel,onClick: (Data) -> Unit) {
+
+    var likesCount by remember { mutableIntStateOf(experiences.likes_no ?: 0) }
+    var isLiked :Boolean by remember { mutableStateOf((experiences.is_liked ?: false) as Boolean) }
+
 
     Column(
         modifier = Modifier.clickable { onClick(experiences) }
@@ -359,16 +358,27 @@ fun RecommendedExperiencesCard(experiences: Data, onClick: (Data) -> Unit) {
                 )
             }
             Column{
-                Row {
-                    Text(text = "${experiences.likes_no ?: 0}",
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = "${likesCount}",
                         color = Color.Black,
                         fontSize = 14.sp)
 
                     Spacer(modifier = Modifier.width(10.dp))
-                    Image(painter = painterResource(id = R.drawable.outline_like),
-                        contentDescription = "like Icon",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(20.dp))
+                    Image(
+                        painter = painterResource(id = if (isLiked) R.drawable.like else R.drawable.outline_like),
+                        contentDescription = "Like Icon",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable {
+                                if (!isLiked) {
+                                    viewModel.likeExperience(experiences.id)
+                                    likesCount++
+                                    isLiked = true
+                                }
+                            }
+                    )
                 }
             }
         }
@@ -376,7 +386,8 @@ fun RecommendedExperiencesCard(experiences: Data, onClick: (Data) -> Unit) {
 }
 
 @Composable
-fun ExperienceDetailsBottomSheet(experience: Data) {
+fun ExperienceDetailsBottomSheet(experience: Data, viewModel: HomeViewModel) {
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -418,7 +429,7 @@ fun ExperienceDetailsBottomSheet(experience: Data) {
                         Spacer(modifier = Modifier.width(15.dp))
                         Image(
                             painter = painterResource(id = R.drawable.outline_like),
-                            contentDescription = "Share",
+                            contentDescription = "Like",
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.size(17.dp)
                         )
@@ -459,6 +470,7 @@ fun ExperienceDetailsBottomSheet(experience: Data) {
     }
 }
 
+
 //___________________________________________________________________________________________________
 // Most Recent Experiences
 @Composable
@@ -476,7 +488,7 @@ fun MostRecentList(viewModel: HomeViewModel, onItemClick: (com.galal.aroundegypt
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(mostRecent, key = { it.id }) { mostRecent ->
-                    MostRecentCard(mostRecent, onItemClick = onItemClick)
+                    MostRecentCard(mostRecent,viewModel, onItemClick = onItemClick)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -488,7 +500,14 @@ fun MostRecentList(viewModel: HomeViewModel, onItemClick: (com.galal.aroundegypt
 }
 
 @Composable
-fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, onItemClick: (com.galal.aroundegypt.model.Most.Data) -> Unit ){
+fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data,viewModel: HomeViewModel, onItemClick: (com
+    .galal.aroundegypt.model.Most.Data) -> Unit ){
+    var likesCount by remember { mutableStateOf(mostExperience.likes_no ?: 0) }
+    //var isLiked :Boolean by remember { mutableStateOf((mostExperience.is_liked ?: false) as Boolean) }
+    var isLiked: Boolean by remember {
+        mutableStateOf(viewModel.likedExperiencesMost.contains(mostExperience.id))
+    }
+
     Column{
         Card(
             modifier = Modifier
@@ -578,12 +597,23 @@ fun MostRecentCard(mostExperience: com.galal.aroundegypt.model.Most.Data, onItem
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("${mostExperience.likes_no ?: 0}")
+                    Text("${likesCount ?: 0}")
                     Spacer(modifier = Modifier.width(5.dp))
-                    Image(painter = painterResource(id = R.drawable.outline_like),
-                        contentDescription = "like Icon",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(20.dp))
+
+                    Image(
+                        painter = painterResource(id = if (isLiked) R.drawable.like else R.drawable.outline_like),
+                        contentDescription = "Like Icon",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable {
+                                if (!isLiked) {
+                                    isLiked = true
+                                    likesCount++
+                                    viewModel.likeExperience(mostExperience.id)
+                                    viewModel.likedExperiencesMost.add(mostExperience.id)
+                                }
+                            }
+                    )
                 }
             }
         }
@@ -635,7 +665,7 @@ fun ExperienceDetailsBottomSheetMost(experience: com.galal.aroundegypt.model.Mos
                     Spacer(modifier = Modifier.width(15.dp))
                     Image(
                         painter = painterResource(id = R.drawable.outline_like),
-                        contentDescription = "Share",
+                        contentDescription = "Like",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.size(17.dp)
                     )

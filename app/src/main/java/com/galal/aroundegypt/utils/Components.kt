@@ -118,3 +118,16 @@ fun NoInternetConnection() {
         }
     }
 }
+
+
+
+@Composable
+fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        fontSize = 22.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.Black,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    )
+}
