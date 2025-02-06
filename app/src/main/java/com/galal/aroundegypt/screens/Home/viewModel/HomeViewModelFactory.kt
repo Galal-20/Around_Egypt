@@ -13,4 +13,3 @@ class HomeViewModelFactory (private val repository: HomeRepositoryImpl ): ViewMo
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
-

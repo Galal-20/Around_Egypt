@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.galal.aroundegypt.R
+import com.galal.aroundegypt.data.api.ApiClient
 import com.galal.aroundegypt.data.api.ApiState
 import com.galal.aroundegypt.model.Most.MostRecentExperiences
 import com.galal.aroundegypt.model.Recommanded.Data
@@ -87,7 +88,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.PaddingValues as PaddingValues1
 
 
-
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel) {
@@ -101,9 +101,14 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel) {
     var isSearching by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
 
+
+
+
     LaunchedEffect(isNetworkAvailable.value) {
-        viewModel.fetchExperiences()
-        viewModel.fetchMostRecentExperiences()
+        if (isNetworkAvailable.value) {
+            viewModel.fetchExperiences()
+            viewModel.fetchMostRecentExperiences()
+        }
     }
 
     LaunchedEffect(searchText) {
@@ -121,17 +126,23 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel) {
 
     if (!isNetworkAvailable.value) {
         NoInternetConnection()
-    } else {
+    }else {
+
         ModalBottomSheetLayout(
             sheetState = bottomSheetState,
             sheetContent = {
                 when {
                     selectedRecommendedExperience != null -> {
-                        ExperienceDetailsBottomSheet(experience = selectedRecommendedExperience!!, viewModel)
+                        ExperienceDetailsBottomSheet(
+                            experience = selectedRecommendedExperience!!,
+                            viewModel
+                        )
                     }
+
                     selectedMostRecentExperience != null -> {
                         ExperienceDetailsBottomSheetMost(experience = selectedMostRecentExperience!!)
                     }
+
                     else -> {
                         Box(modifier = Modifier.height(1.dp))
                     }
@@ -163,12 +174,12 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel) {
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 items(experiences) { experience ->
-                                   MostRecentCard(experience,viewModel) {
-                                       selectedMostRecentExperience= it
-                                       coroutineScope.launch {
-                                           bottomSheetState.show()
-                                       }
-                                   }
+                                    MostRecentCard(experience, viewModel) {
+                                        selectedMostRecentExperience = it
+                                        coroutineScope.launch {
+                                            bottomSheetState.show()
+                                        }
+                                    }
                                 }
                             }
                         } else {
@@ -195,7 +206,10 @@ fun HomeScreen(navHostController: NavHostController, viewModel: HomeViewModel) {
             }
         }
     }
+
 }
+
+
 @Composable
 fun TopBar(
     viewModel: HomeViewModel,
@@ -558,7 +572,7 @@ fun ExperienceDetailsBottomSheet(experience: Data, viewModel: HomeViewModel) {
             //City
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp),) {
                 Text(
-                    text = "${experience.city.name ?: 0}, Egypt.",
+                    text = "${experience.city?.name ?: 0}, Egypt.",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )

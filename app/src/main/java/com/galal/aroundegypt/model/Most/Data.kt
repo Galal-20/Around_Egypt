@@ -28,6 +28,6 @@ data class Data(
     val ticket_prices: List<TicketPrice>,
     val title: String,
     val tour_html: String,
-    val translated_opening_hours: TranslatedOpeningHours,
+    //val translated_opening_hours: TranslatedOpeningHours,
     val views_no: Int
 )

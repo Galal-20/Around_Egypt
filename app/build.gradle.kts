@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("kotlin-kapt")
+    //kotlin("jvm") version "1.9.0" // or the version you're using
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0" // make sure to match the version with Kotlin version
+
 }
 
 android {
@@ -86,6 +89,13 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+
+    implementation ("androidx.datastore:datastore-preferences:1.0.0")  // For storing preferences
+    implementation ("androidx.datastore:datastore:1.0.0" )            // For storing data objects
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+
+    implementation ("com.google.code.gson:gson:2.8.9")
 
 
     //coil for images
@@ -109,6 +119,11 @@ dependencies {
     testImplementation ("org.mockito:mockito-inline:3.12.4")
     testImplementation ("io.mockk:mockk:1.13.5")
     debugImplementation ("androidx.compose.ui:ui-tooling:1.0.0")
+
+    testImplementation ("org.slf4j:slf4j-simple:1.7.32")
+    testImplementation ("io.mockk:mockk:1.12.0")
+    testImplementation ("org.junit.jupiter:junit-jupiter-api:5.7.2")
+    testImplementation ("org.junit.jupiter:junit-jupiter-engine:5.7.2")
 
     implementation ("androidx.room:room-runtime:2.6.0")
     kapt ("androidx.room:room-compiler:2.6.0")
