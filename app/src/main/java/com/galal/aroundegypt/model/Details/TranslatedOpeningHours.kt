@@ -1,5 +1,6 @@
 package com.galal.aroundegypt.model.Details
 
+
 data class TranslatedOpeningHours(
     val friday: Friday,
     val monday: Monday,

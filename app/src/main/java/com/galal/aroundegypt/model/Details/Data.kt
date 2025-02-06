@@ -1,5 +1,6 @@
 package com.galal.aroundegypt.model.Details
 
+
 data class Data(
     val address: String,
     val audio_url: String,

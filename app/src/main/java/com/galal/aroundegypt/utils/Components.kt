@@ -1,5 +1,7 @@
 package com.galal.aroundegypt.utils
 
+import android.content.Context
+import android.net.ConnectivityManager
 import androidx.annotation.RawRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

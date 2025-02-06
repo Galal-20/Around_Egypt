@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.galal.aroundegypt.data.api.ApiClient
+import com.galal.aroundegypt.data.local.ExperienceDatabase
 import com.galal.aroundegypt.data.repository.HomeRepositoryImpl
 import com.galal.aroundegypt.screens.Home.view.HomeScreen
 import com.galal.aroundegypt.screens.Home.viewModel.HomeViewModel
@@ -25,8 +26,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val experienceDatabase = ExperienceDatabase.getInstance(this)
         val viewModel: HomeViewModel by viewModels {
-            HomeViewModelFactory(HomeRepositoryImpl(ApiClient.aroundApi))
+            HomeViewModelFactory(HomeRepositoryImpl(ApiClient.aroundApi, experienceDatabase))
         }
         setContent {
             AroundEgyptTheme {
@@ -50,4 +53,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-

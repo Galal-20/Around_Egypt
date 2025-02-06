@@ -1,9 +1,11 @@
 package com.galal.aroundegypt.screens.Home.viewModel
 
 import android.util.Log
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.galal.aroundegypt.data.api.ApiState
+import com.galal.aroundegypt.data.local.RecommendedExperience
 import com.galal.aroundegypt.data.repository.HomeRepositoryImpl
 import com.galal.aroundegypt.model.Most.MostRecentExperiences
 import com.galal.aroundegypt.model.Recommanded.RecommendedExperiences
@@ -19,6 +21,13 @@ class HomeViewModel(private val repository: HomeRepositoryImpl): ViewModel() {
     private val _mostRecentExperiences = MutableStateFlow<ApiState<MostRecentExperiences>>(ApiState.Loading)
     val mostRecentExperiences: StateFlow<ApiState<MostRecentExperiences>> = _mostRecentExperiences
 
+    private val _recommendedExperiencesLive = MutableLiveData<List<RecommendedExperience>>()
+    val recommendedExperiencesLive: MutableLiveData<List<RecommendedExperience>> = _recommendedExperiencesLive
+
+
+   /* private val _mostRecentExperiencesLive = MutableLiveData<List<MostRecentExperience>>()
+    val mostRecentExperiencesLive: MutableLiveData<List<MostRecentExperience>> = _mostRecentExperiencesLive
+*/
     private val _searchResults = MutableStateFlow<ApiState<MostRecentExperiences>>(ApiState.Loading)
     val searchResults: StateFlow<ApiState<MostRecentExperiences>> = _searchResults
 
@@ -34,13 +43,12 @@ class HomeViewModel(private val repository: HomeRepositoryImpl): ViewModel() {
         }
     }
 
-     suspend fun fetchExperiences() {
+    suspend fun fetchExperiences() {
         val response = repository.fetchRecommendedExperiences()
         if (response is ApiState.Success) {
             _experiences.value = ApiState.Success(
                 response.data.copy(data = response.data.data.map { experiences ->
                     experiences.copy(is_liked = likedExperiences.contains(experiences.id))
-
                 })
             )
         } else if (response is ApiState.Failure) {
@@ -48,20 +56,62 @@ class HomeViewModel(private val repository: HomeRepositoryImpl): ViewModel() {
         }
     }
 
-     suspend fun fetchMostRecentExperiences() {
+    suspend fun fetchMostRecentExperiences() {
         val response = repository.fetchMostRecentExperiences()
         if (response is ApiState.Success) {
             _mostRecentExperiences.value = ApiState.Success(
                 response.data.copy(data = response.data.data.map { experiencesMost ->
                     experiencesMost.copy(is_liked = likedExperiencesMost.contains(experiencesMost.id),
                         era = experiencesMost.era
-                        )
+                    )
                 })
             )
         }else if (response is ApiState.Failure){
             _mostRecentExperiences.value = ApiState.Failure(response.message)
         }
     }
+
+   /* fun saveRecommendedExperiencesToDatabase(experiences: RecommendedExperience) {
+        viewModelScope.launch {
+            val response = RecommendedExperience(
+                id = experiences.id,
+                title = experiences.title,
+                cover_photo = experiences.cover_photo,
+                views_no =  experiences.views_no,
+                city = experiences.city,
+                likes_no = experiences.likes_no
+            )
+            repository.saveRecommendedExperiencesToDatabase(response)
+        }
+    }*/
+
+   /* fun saveMostExperiencesToDatabase(experiences: MostRecentExperience) {
+        viewModelScope.launch {
+            val response = MostRecentExperience(
+                id = experiences.id,
+                title = experiences.title,
+                cover_photo = experiences.cover_photo,
+                is_liked = experiences.likes_no,
+                views_no =  experiences.views_no,
+                city = experiences.city,
+                likes_no = experiences.likes_no
+            )
+            repository.saveMostRecentExperiencesToDatabase(response)
+        }
+    }*/
+
+    /*fun getRecommendedExperiencesFromDatabase() {
+        viewModelScope.launch {
+            _recommendedExperiencesLive.value = repository.getRecommendedExperiencesFromDatabase()
+        }
+    }*/
+
+   /* fun getMostRecentExperiencesFromDatabase() {
+        viewModelScope.launch {
+            _mostRecentExperiencesLive.value = repository.getMostRecentExperiencesFromDatabase()
+        }
+    }*/
+
 
 
 

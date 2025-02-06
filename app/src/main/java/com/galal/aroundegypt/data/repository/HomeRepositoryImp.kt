@@ -3,6 +3,8 @@ package com.galal.aroundegypt.data.repository
 import android.util.Log
 import com.galal.aroundegypt.data.api.ApiState
 import com.galal.aroundegypt.data.api.AroundApi
+import com.galal.aroundegypt.data.local.ExperienceDatabase
+import com.galal.aroundegypt.data.local.RecommendedExperience
 import com.galal.aroundegypt.model.Details.ExperiencesDetails
 import com.galal.aroundegypt.model.Most.MostRecentExperiences
 import com.galal.aroundegypt.model.Recommanded.RecommendedExperiences
@@ -10,7 +12,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 
-class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
+
+class HomeRepositoryImpl(private val apiService: AroundApi, private val database: ExperienceDatabase) : HomeRepository {
+
+
+
     override suspend fun fetchRecommendedExperiences(): ApiState<RecommendedExperiences> = withContext(
         Dispatchers.IO)  {
         return@withContext try {
@@ -67,7 +73,6 @@ class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
                 ApiState.Failure("Error: ${response.message()}")
             }
         } catch (e: Exception) {
-            Log.e("API_ERROR", "Exception: ${e.localizedMessage}")
             ApiState.Failure(e.localizedMessage ?: "Unknown Error")
         }
     }
@@ -82,5 +87,30 @@ class HomeRepositoryImpl(private val apiService: AroundApi) : HomeRepository {
                 ApiState.Failure(e.localizedMessage ?: "Unknown Error")
             }
         }
-}
+
+
+   /* suspend fun saveRecommendedExperiencesToDatabase(experiences: RecommendedExperience) = withContext(Dispatchers.IO)  {
+        return@withContext try {
+            experienceDao.insertRecommendedExperience(experiences)
+        }catch (e: Exception){
+            throw e
+        }
+    }*/
+
+/*suspend fun saveMostRecentExperiencesToDatabase(experiencesMost: MostRecentExperience) = withContext(Dispatchers.IO)  {
+    return@withContext try {
+        experienceDao.insertMostRecentExperience(experiencesMost)
+    }catch (e: Exception){
+        throw e
+    }
+}*/
+
+   /* suspend fun getRecommendedExperiencesFromDatabase():List<RecommendedExperience> =
+        withContext(Dispatchers.IO) {
+            experienceDao.getRecommendedExperiences()
+        }
+*/
+  /*  suspend fun getMostRecentExperiencesFromDatabase(): List<MostRecentExperience> = withContext(Dispatchers.IO){
+        experienceDao.getMostRecentExperiences()
+    */}
 
